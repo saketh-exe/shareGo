@@ -1,25 +1,26 @@
 package server
 
 import (
-	"log"
-	"net"
-	"os"
 	"bufio"
 	"encoding/json"
 	"io"
-	_"strings"
-	"github.com/joho/godotenv"
+	"log"
+	"net"
+	"os"
+	_ "strings"
+	"github.com/saketh-exe/shareGO/internal"
 )
 
 
-
+type FileMetadata struct {
+	FileName string
+	FileSize int64 // fileStats.Size() is int64
+	Path     string
+	IsDir    bool
+}
 func StartServer(){
-	
-	err := godotenv.Load()
-	if err != nil{
-		log.Fatal("Error Loading ENV")
-	}
-	portNo := os.Getenv("PORT")	
+
+	portNo := internal.PORT
 	PORT := ":" + portNo
 	if PORT == ""{
 		log.Fatal("Port Not Specified")
@@ -47,20 +48,35 @@ func fileReciver(conn net.Conn){
 
 	// get the file metadata first 
 
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReaderSize(conn,internal.BufferSize)
 
 	rawfileMetadata,err := reader.ReadString('\n')
 	if err != nil{log.Println("Error reading metadata")}
 
-	var fileMetadata map[string]any
+	var fileMetadata FileMetadata
 	json.Unmarshal([]byte(rawfileMetadata),&fileMetadata)
-	fileName := fileMetadata["FileName"].(string)
+	
+	fileName := fileMetadata.FileName
+	fileSize := fileMetadata.FileSize
+	sizeInGB := float64(fileSize) / 1_073_741_824
+	log.Printf("Receiving File %s , Size : %.2f GB",fileName,sizeInGB )
+	
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {log.Println("Error Creating new File")}	
 	defer file.Close()
-
-	io.Copy(file,reader)	
 	
+	buf := make([]byte, internal.BufferSize)
+
+// 3. Copy using the custom buffer while keeping the strict size limit
+	written , err := io.CopyBuffer(file, reader, buf)
+	if err != nil || written != fileSize { // Transmission has stopped
+		file.Close()
+		os.Remove(file.Name())
+		log.Printf("Transmission Failed for file %s , Deleting Partial File....",fileName)
+		return
+	}
+	
+	log.Printf("Received File %s , Written Size : %.2f GB",fileName,float64(written)/1_073_741_824 )
 	
 	}
 

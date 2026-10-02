@@ -6,16 +6,19 @@ import(
 	"net"
 	"os"
 	"encoding/json"
+	"github.com/saketh-exe/shareGO/internal"
 )
 
 func sendFile(fileData FileMetadata){
 	log.Println("sending File")
 
-	conn,err := net.Dial("tcp","localhost:3030")
-	if err != nil{
-		log.Fatalf("ERROR connection to peer %v \n",err)
-	}
+	receiver := "localhost:" + internal.PORT
+	conn,err := net.Dial("tcp",receiver)
+	
+	if err != nil{log.Fatalf("ERROR connection to peer %v \n",err);return}
+	
 	defer conn.Close()
+
 	fileDataJson,err := json.Marshal(fileData)
 	if err != nil {
 		log.Printf("Couldn't convert %v into json",fileData)
@@ -30,8 +33,8 @@ func sendFile(fileData FileMetadata){
 
 	defer file.Close()
 	log.Printf("Steaming : %s\n",fileData.FileName)
-	
-	_ , err = io.Copy(conn,file)
+	buf := make([]byte, internal.BufferSize) 
+	_, err = io.CopyBuffer(conn,file, buf)
 	if err != nil{
 		log.Printf("ERROR sending file data: %v \n", err)
 		return
