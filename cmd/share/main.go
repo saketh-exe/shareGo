@@ -5,20 +5,25 @@ import (
 	"os"
 
 	"github.com/saketh-exe/shareGO/internal/client"
-	_ "github.com/saketh-exe/shareGO/internal/client"
+	"github.com/saketh-exe/shareGO/internal/server"
 )
 
 func main(){
 	args := os.Args
 	path := args[0]
 	command := args[1]
-	filepaths := args[2:]
+	if command == "start"{
+		server.StartServer()
 	
-	fmt.Printf("Script path : %s; command : %s;\n", path, command)
-	for _,path := range filepaths{
-		fmt.Printf("%s \n", path)
-	}
+	}else{
 
-	client.UploadFile(filepaths)
+		filepaths := args[2:]
+		fmt.Printf("Script path : %s; command : %s;\n", path, command)
+		for _,path := range filepaths{
+			fmt.Printf("%s \n", path)
+		}
+		
+		client.UploadFile(filepaths)
+	}
 	
 }

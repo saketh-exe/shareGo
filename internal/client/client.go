@@ -5,30 +5,40 @@ import (
 	"os"
 )
 
-func UploadFile(filePaths []string){
-	for _,path := range filePaths {
-		if checkFile(path){
-			data,err := os.ReadFile(path)
-			if err != nil{
-				log.Fatalf("Can't read %s", path)
-			}
-			
+func UploadFile(filePaths []string) {
+	for _, path := range filePaths {
+		fileData := getFileMetadata(path)
+		if fileData == nil {
+			continue
 		}
-	} 
+		if !fileData.IsDir {
+			sendFile(*fileData)
+		}
+	}
 }
 
-func checkFile(path string) bool{
-	fileStats,err := os.Stat(path)
-	if (os.IsNotExist(err)) {
-		
-		log.Printf("%s File does not exitst", path)
-		return false
+type FileMetadata struct {
+	FileName string
+	FileSize int64 // fileStats.Size() is int64
+	Path     string
+	IsDir    bool
+}
 
-	}else if(err != nil){
-		
+func getFileMetadata(path string) *FileMetadata {
+	fileStats, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		log.Printf("%s File does not exist", path)
+		return nil // Returns "nothing" (nil pointer)
+
+	} else if err != nil {
 		log.Fatal("INTERNAL ERROR")
 	}
-	
-	log.Println(fileStats.Name())
-	return true
+
+	return &FileMetadata{
+		FileName: fileStats.Name(),
+		FileSize: fileStats.Size(),
+		Path:     path,
+		IsDir:    fileStats.IsDir(),
+	}
 }
